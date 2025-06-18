@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Quản lý Game</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <!-- Thanh điều hướng -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Shop Game</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/User/index.html">Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/User/giohang.html">Giỏ hàng</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/Admin/admin.html">Quản lý Game</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-warning text-dark ms-2" href="xacnhandon.html">📦 Xác nhận đơn</a>
+                    </li>
+                    <li class="nav-item"><button class="btn btn-danger" id="logout-btn">Đăng xuất</button></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Nội dung quản lý game -->
+    <div class="container mt-4">
+        <h2 class="text-center">Quản lý Game 🎮</h2>
+
+        <!-- Form Thêm/Sửa Game -->
+        <form id="game-form">
+            <div class="mb-3">
+                <label for="game-name" class="form-label">Tên game</label>
+                <input type="text" class="form-control" id="game-name" required>
+            </div>
+            <div class="mb-3">
+                <label for="game-price" class="form-label">Giá (VNĐ)</label>
+                <input type="number" class="form-control" id="game-price" required>
+            </div>
+            <div class="mb-3">
+                <label for="game-image" class="form-label">Ảnh URL</label>
+                <input type="text" class="form-control" id="game-image" required>
+            </div>
+            <div class="mb-3">
+                <label for="category-name" class="form-label">Tên danh mục</label>
+                <input type="text" class="form-control" id="category-name" required>
+            </div>
+            <div class="mb-3">
+                <label for="game-description" class="form-label">Mô tả game</label>
+                <textarea class="form-control" id="game-description" rows="3"></textarea>
+            </div>            
+            <input type="hidden" id="game-id">
+            <button type="submit" class="btn btn-success">Lưu game</button>
+        </form>
+
+        <!-- Danh sách Game -->
+        <h3 class="mt-4">Danh sách Game 📋</h3>
+        <table class="table table-bordered text-center">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Ảnh</th>
+                    <th>Tên game</th>
+                    <th>Danh mục</th>
+                    <th>Giá</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="game-list"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_URL = "https://67e0e43e58cc6bf785234aa9.mockapi.io/gamesss";
+
+        $(document).ready(function () {
+            checkAdmin();
+            loadGames();
+
+            // Kiểm tra quyền Admin
+            function checkAdmin() {
+                let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+                if (!currentUser || currentUser.role !== "admin") {
+                    alert("Bạn không có quyền truy cập!");
+                    window.location.href = "/User/index.html";
+                }
+            }
+
+            // Tải danh sách game
+            function loadGames() {
+                $.get(API_URL, function (games) {
+                    let gameHtml = "";
+                    $.each(games, function (index, game) {
+                        gameHtml += `
+                            <tr>
+                                <td>${game.id}</td>
+                                <td><img src="${game.image}" width="80"></td>
+                                <td>${game.name}</td>
+                                <td>${game.category || "Chưa có danh mục"}</td>
+                                <td>${game.price.toLocaleString()} VNĐ</td>
+                                <td>
+                                    <button class="btn btn-warning btn-sm edit-game" data-id="${game.id}">✏️ Sửa</button>
+                                    <button class="btn btn-danger btn-sm delete-game" data-id="${game.id}">🗑️ Xóa</button>
+                                </td>
+                            </tr>`;
+                    });
+                    $("#game-list").html(gameHtml);
+                });
+            }
+
+            // Thêm/Sửa game
+            $("#game-form").submit(function (e) {
+                e.preventDefault();
+                let gameId = $("#game-id").val();
+                let gameData = {
+                    name: $("#game-name").val(),
+                    price: parseFloat($("#game-price").val()),
+                    image: $("#game-image").val(),
+                    category: $("#category-name").val(),
+                    description: $("#game-description").val() || "Không có mô tả"
+                };
+
+                if (gameId) {
+                    $.ajax({
+                        url: `${API_URL}/${gameId}`,
+                        type: "PUT",
+                        contentType: "application/json",
+                        data: JSON.stringify(gameData),
+                        success: function () {
+                            alert("Cập nhật game thành công!");
+                            $("#game-form")[0].reset();
+                            $("#game-id").val("");
+                            loadGames();
+                        }
+                    });
+                } else {
+                    $.post(API_URL, gameData, function () {
+                        alert("Thêm game thành công!");
+                        $("#game-form")[0].reset();
+                        loadGames();
+                    });
+                }
+            });
+
+            // Xóa game
+            $(document).on("click", ".delete-game", function () {
+                if (confirm("Bạn có chắc muốn xóa game này?")) {
+                    let gameId = $(this).data("id");
+                    $.ajax({
+                        url: `${API_URL}/${gameId}`,
+                        type: "DELETE",
+                        success: function () {
+                            alert("Xóa game thành công!");
+                            loadGames();
+                        }
+                    });
+                }
+            });
+
+            // Sửa game
+            $(document).on("click", ".edit-game", function () {
+                let gameId = $(this).data("id");
+                $.get(`${API_URL}/${gameId}`, function (game) {
+                    $("#game-id").val(game.id);
+                    $("#game-name").val(game.name);
+                    $("#game-price").val(game.price);
+                    $("#game-image").val(game.image);
+                    $("#category-name").val(game.category || "");
+                    $("#game-description").val(game.description || "Không có mô tả");
+                });
+            });
+
+            // Đăng xuất
+            $("#logout-btn").click(function () {
+                localStorage.removeItem("currentUser");
+                alert("Bạn đã đăng xuất!");
+                window.location.href = "/User/index.html";
+            });
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giỏ Hàng - Shop Game</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+    <!-- Thanh điều hướng -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Shop Game</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="tatcagame.html">Tất cả Game</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="giohang.html">Giỏ hàng 🛒 <span class="badge bg-danger" id="cart-count">0</span></a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Nội dung Giỏ hàng -->
+    <div class="container mt-4">
+        <h2 class="text-center">🛒 Giỏ Hàng Của Bạn</h2>
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Hình Ảnh</th>
+                            <th>Tên Game</th>
+                            <th>Giá</th>
+                            <th>Số lượng</th>
+                            <th>Thành tiền</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-items">
+                        <!-- Dữ liệu giỏ hàng sẽ được load ở đây -->
+                    </tbody>
+                </table>
+                <button class="btn btn-danger" id="clear-cart">🗑 Xóa toàn bộ giỏ hàng</button>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border bg-light">
+                    <h4>Tổng cộng: <span id="total-price">0</span> VNĐ</h4>
+                    <button class="btn btn-success w-100 mt-3" id="checkout">🛒 Thanh toán</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            loadCart();
+            updateCartCount();
+
+            function loadCart() {
+                let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                let cartHtml = "";
+                let total = 0;
+
+                if (cart.length === 0) {
+                    $("#cart-items").html(`<tr><td colspan="6" class="text-center">Giỏ hàng trống</td></tr>`);
+                    $("#total-price").text("0");
+                    return;
+                }
+
+                cart.forEach((game, index) => {
+                    let subtotal = game.price * game.quantity;
+                    total += subtotal;
+                    cartHtml += `
+                        <tr>
+                            <td><img src="${game.image}" width="60"></td>
+                            <td>${game.name}</td>
+                            <td>${game.price.toLocaleString()} VNĐ</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary update-quantity" data-index="${index}" data-type="decrease">-</button>
+                                ${game.quantity}
+                                <button class="btn btn-sm btn-outline-primary update-quantity" data-index="${index}" data-type="increase">+</button>
+                            </td>
+                            <td>${subtotal.toLocaleString()} VNĐ</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger remove-item" data-index="${index}">❌ Xóa</button>
+                            </td>
+                        </tr>`;
+                });
+
+                $("#cart-items").html(cartHtml);
+                $("#total-price").text(total.toLocaleString());
+            }
+
+            function updateCartCount() {
+                let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                let totalCount = cart.reduce((total, game) => total + game.quantity, 0);
+                $("#cart-count").text(totalCount);
+            }
+
+            $(document).on("click", ".update-quantity", function () {
+                let index = $(this).data("index");
+                let type = $(this).data("type");
+                let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+                if (type === "increase") {
+                    cart[index].quantity++;
+                } else if (type === "decrease" && cart[index].quantity > 1) {
+                    cart[index].quantity--;
+                } else {
+                    cart.splice(index, 1);
+                }
+
+                localStorage.setItem("cart", JSON.stringify(cart));
+                loadCart();
+                updateCartCount();
+            });
+
+            $(document).on("click", ".remove-item", function () {
+                let index = $(this).data("index");
+                let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                cart.splice(index, 1);
+
+                localStorage.setItem("cart", JSON.stringify(cart));
+                loadCart();
+                updateCartCount();
+            });
+
+            $("#clear-cart").click(function () {
+                if (confirm("Bạn có chắc muốn xóa toàn bộ giỏ hàng?")) {
+                    localStorage.removeItem("cart");
+                    loadCart();
+                    updateCartCount();
+                }
+            });
+
+            $("#checkout").click(function () {
+                if (confirm("Xác nhận thanh toán?")) {
+                    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                    if (cart.length === 0) {
+                        alert("Giỏ hàng trống!");
+                        return;
+                    }
+
+                    let orders = JSON.parse(localStorage.getItem("orders")) || [];
+                    let newOrder = {
+                        date: new Date().toLocaleString(),
+                        items: cart
+                    };
+
+                    orders.push(newOrder);
+                    localStorage.setItem("orders", JSON.stringify(orders));
+                    localStorage.removeItem("cart");
+
+                    alert("✅ Thanh toán thành công!");
+                    window.location.href = "donhang.html";
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
